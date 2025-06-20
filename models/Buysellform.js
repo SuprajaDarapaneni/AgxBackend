@@ -26,8 +26,12 @@ const BuySellFormSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  message: {
+    type: String,
+    required: true, // Make optional if desired: required: false
+  },
   imageUrls: {
-    type: [String], // <-- NEW: store array of Cloudinary image URLs
+    type: [String],
     default: [],
   },
 }, { timestamps: true });
