@@ -49,6 +49,52 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Update a review by ID - protected by admin auth middleware
+router.put('/:id', authenticateAdmin, async (req, res) => {
+  const id = req.params.id;
+  const { name, rating, comment } = req.body;
+
+  // Validate MongoDB ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid review ID.' });
+  }
+
+  // Validate fields (optional - you can customize this)
+  if (!name || !rating || !comment) {
+    return res.status(400).json({ message: 'Name, rating, and comment are required.' });
+  }
+
+  if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Rating must be a number between 1 and 5.' });
+  }
+
+  if (typeof name !== 'string' || name.trim().length === 0) {
+    return res.status(400).json({ message: 'Name must be a non-empty string.' });
+  }
+
+  if (typeof comment !== 'string' || comment.trim().length === 0) {
+    return res.status(400).json({ message: 'Comment must be a non-empty string.' });
+  }
+
+  try {
+    const review = await Review.findById(id);
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found.' });
+    }
+
+    // Update fields
+    review.name = name.trim();
+    review.rating = rating;
+    review.comment = comment.trim();
+
+    const updatedReview = await review.save();
+    res.json(updatedReview);
+  } catch (error) {
+    console.error('Error updating review:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // DELETE a review by ID - protected by admin auth middleware
 router.delete('/:id', authenticateAdmin, async (req, res) => {
   const id = req.params.id;
@@ -63,7 +109,6 @@ router.delete('/:id', authenticateAdmin, async (req, res) => {
     if (!review) {
       return res.status(404).json({ message: 'Review not found.' });
     }
-    // Use deleteOne instead of deprecated remove
     await review.deleteOne();
     res.json({ message: 'Review deleted successfully.' });
   } catch (error) {
