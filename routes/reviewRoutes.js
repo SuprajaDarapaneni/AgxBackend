@@ -1,4 +1,3 @@
-// routes/reviewRoutes.js
 import express from 'express';
 import Review from '../models/Review.js';
 
@@ -30,6 +29,20 @@ router.post('/', async (req, res) => {
     res.status(201).json(savedReview);
   } catch (error) {
     console.error('Error saving review:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// DELETE a review by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+    await review.remove();
+    res.json({ message: 'Review deleted successfully' });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
