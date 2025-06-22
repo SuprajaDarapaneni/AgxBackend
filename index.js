@@ -70,7 +70,7 @@ app.use(cors({
 }));
 
 /* Static Files */
-app.use("/uploads", express.static("public/uploads"));
+app.use("/uploads", express.static(" "));
 
 /* Routes */
 app.use("/client", clientRoutes);

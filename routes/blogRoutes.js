@@ -47,7 +47,7 @@ router.post('/', async (req, res) => {
 
 // Update blog
 router.put('/:id', async (req, res) => {
-  const { title, excerpt, content } = req.body;
+  const { title, excerpt, content,image,video } = req.body;
 
   try {
     const blog = await Blog.findById(req.params.id);
@@ -56,6 +56,9 @@ router.put('/:id', async (req, res) => {
     if (title !== undefined) blog.title = title;
     if (excerpt !== undefined) blog.excerpt = excerpt;
     if (content !== undefined) blog.content = content;
+      if (image !== undefined) blog.image = image;   // <-- Added
+    if (video !== undefined) blog.video = video;   // <-- Added
+
 
     const updatedBlog = await blog.save();
     res.json(updatedBlog);
