@@ -69,7 +69,6 @@ app.use(cors({
   credentials: true
 }));
 
-/* Static Files */
 app.use("/uploads", express.static(" "));
 
 /* Routes */
