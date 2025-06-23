@@ -25,7 +25,7 @@ import OverallStat from "./models/OverallStat.js";
 import AffiliateStat from "./models/AffiliateStat.js";
 import Productcard from "./models/Productcard.js";
 import Contact from "./models/ContactUs.js";
-
+import reviewFormRouter from './routes/reviewFormRoutes.js';
 // Optional sample data
 import {
   dataUser,
@@ -79,7 +79,9 @@ app.use("/auth", authRoutes);
 app.use("/", contactRoutes);
 app.use("/blogs", blogRoutes);
 app.use("/reviews", reviewRoutes);
-app.use("/reviewform", reviewFormRoutes);
+// app.use("/reviewform", reviewFormRoutes);
+
+app.use('/review-form', reviewFormRouter);
 
 /* MongoDB Connection & Server Start */
 const PORT = process.env.PORT || 9000;

@@ -18,6 +18,14 @@ const BuySellFormSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  dropOffLocation: {
+    type: String,
+    required: true,
+  },
+  country: {
+    type: String,
+    required: true,
+  },
   industries: {
     type: [String],
     required: true,
@@ -28,7 +36,7 @@ const BuySellFormSchema = new mongoose.Schema({
   },
   message: {
     type: String,
-    required: true, // Make optional if desired: required: false
+    required: false,  // Optional message
   },
   imageUrls: {
     type: [String],

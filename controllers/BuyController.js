@@ -5,106 +5,90 @@ import sanitizeHtml from 'sanitize-html';
 
 dotenv.config();
 
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST,
+  port: parseInt(process.env.EMAIL_PORT, 10) || 587,
+  secure: false, // STARTTLS on 587
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: { rejectUnauthorized: false, minVersion: 'TLSv1.2' },
+  logger: false,
+  debug: false,
+});
+
 export const buysell = async (req, res) => {
   try {
     const {
-      buySell,
-      name,
-      phone,
-      email,
-      industries,
-      timing,
-      message,
-      imageUrls = [],
+      buySell, name, phone, email, dropOffLocation,
+      country, industries, timing, message = '', imageUrls = []
     } = req.body;
 
-    // ✅ Validate required fields
-    if (!buySell || !name || !phone || !email || !timing) {
-      return res.status(400).json({ message: 'All fields are required.' });
+    // Validate required fields
+    if (!buySell || !name || !phone || !email || !dropOffLocation || !country || !timing) {
+      return res.status(400).json({ message: 'All required fields must be filled.' });
     }
-
     if (!Array.isArray(industries) || industries.length === 0) {
-      return res.status(400).json({ message: 'Please select at least one industry.' });
+      return res.status(400).json({ message: 'Select at least one industry.' });
     }
 
-    // ✅ Sanitize inputs
-    const cleanBuySell = sanitizeHtml(buySell.trim());
-    const cleanMessage = sanitizeHtml(message.trim());
+    // Sanitize inputs
+    const clean = (str) => sanitizeHtml(str.trim());
+    const cleanIndustries = industries.map(clean);
+    const cleanImages = Array.isArray(imageUrls) ? imageUrls.map(clean) : [];
 
-    const cleanName = sanitizeHtml(name.trim());
-    const cleanPhone = sanitizeHtml(phone.trim());
-    const cleanEmail = sanitizeHtml(email.trim());
-    const cleanTiming = sanitizeHtml(timing.trim());
-    const cleanIndustries = industries.map(ind => sanitizeHtml(ind.trim()));
-    const cleanImages = Array.isArray(imageUrls)
-      ? imageUrls.map(url => sanitizeHtml(url.trim()))
-      : [];
-
-    // ✅ Save to MongoDB
+    // Save to DB
     const newForm = new BuySellForm({
-      buySell: cleanBuySell,
-      name: cleanName,
-      phone: cleanPhone,
-      email: cleanEmail,
+      buySell: clean(buySell),
+      name: clean(name),
+      phone: clean(phone),
+      email: clean(email),
+      dropOffLocation: clean(dropOffLocation),
+      country: clean(country),
       industries: cleanIndustries,
-      timing: cleanTiming,
-      message: cleanMessage,
+      timing: clean(timing),
+      message: clean(message),
       imageUrls: cleanImages,
     });
 
     await newForm.save();
-    console.log("✅ Form saved to DB");
+    console.log('✅ Buy/Sell form saved');
 
-    // ✅ Setup Nodemailer transporter
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-      secure: false, // STARTTLS for port 587
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2',
-      },
-    });
-
-    // ✅ Build image HTML safely
-    const imageHtml = cleanImages.length
-      ? cleanImages
-          .map(url => `<img src="${url}" alt="Uploaded Image" style="max-width:300px; display:block; margin-bottom:10px;" />`)
-          .join('<br/>')
+    // Compose email HTML with images
+    const imagesHtml = cleanImages.length
+      ? cleanImages.map(url => `<img src="${url}" alt="Image" style="max-width:300px;margin-bottom:10px;display:block;">`).join('')
       : '';
 
-    // ✅ Email content
     const mailOptions = {
       from: `"AGX Buy/Sell" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_SEND || 'info@agx-international.com',
-      subject: '📄 New Buy/Sell Submission',
+      subject: '📄 New Buy/Sell Form Submission',
       html: `
-        <h2>New Buy/Sell Form Submission</h2>
-        <p><strong>Type:</strong> ${cleanBuySell}</p>
-        <p><strong>Name:</strong> ${cleanName}</p>
-        <p><strong>Phone:</strong> ${cleanPhone}</p>
-        <p><strong>Email:</strong> ${cleanEmail}</p>
+        <h2>New Submission</h2>
+        <p><strong>Type:</strong> ${clean(buySell)}</p>
+        <p><strong>Name:</strong> ${clean(name)}</p>
+        <p><strong>Phone:</strong> ${clean(phone)}</p>
+        <p><strong>Email:</strong> ${clean(email)}</p>
+        <p><strong>DropOff Location:</strong> ${clean(dropOffLocation)}</p>
+        <p><strong>Country:</strong> ${clean(country)}</p>
         <p><strong>Industries:</strong> ${cleanIndustries.join(', ')}</p>
-        <p><strong>Timing:</strong> ${cleanTiming}</p>
-        <p><strong>Message:</strong><br>${cleanMessage}</p>
-
-        ${imageHtml ? `<h3>Uploaded Images:</h3>${imageHtml}` : ''}
+        <p><strong>Timing:</strong> ${clean(timing)}</p>
+        <p><strong>Message:</strong><br>${clean(message)}</p>
+        ${imagesHtml ? `<h3>Images:</h3>${imagesHtml}` : ''}
       `,
+      headers: {
+        'X-Priority': '3',
+        'X-Mailer': 'NodeMailer',
+      },
     };
 
-    // ✅ Send the email
     const info = await transporter.sendMail(mailOptions);
-    console.log("📧 Email sent successfully:", info.messageId);
+    console.log(`📧 Email sent: ${info.messageId}`);
 
-    // ✅ Send response
-    res.status(201).json({ message: 'Form submitted and email sent successfully!' });
-
+    res.status(201).json({ message: 'Form submitted and email sent.' });
   } catch (error) {
-    console.error('❌ Error handling Buy/Sell form:', error.stack || error);
-    res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('❌ Buy/Sell form error:', error.stack || error);
+    res.status(500).json({ message: 'Server error. Try again later.' });
   }
 };
