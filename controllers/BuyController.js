@@ -8,7 +8,7 @@ dotenv.config();
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-  secure: false, // STARTTLS on 587
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -55,12 +55,12 @@ export const buysell = async (req, res) => {
     await newForm.save();
     console.log('✅ Buy/Sell form saved');
 
-    // Compose email HTML with images
+    // Admin email (with image HTML if available)
     const imagesHtml = cleanImages.length
       ? cleanImages.map(url => `<img src="${url}" alt="Image" style="max-width:300px;margin-bottom:10px;display:block;">`).join('')
       : '';
 
-    const mailOptions = {
+    const adminMailOptions = {
       from: `"AGX Buy/Sell" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_SEND || 'info@agx-international.com',
       subject: '📄 New Buy/Sell Form Submission',
@@ -83,10 +83,48 @@ export const buysell = async (req, res) => {
       },
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`📧 Email sent: ${info.messageId}`);
+    await transporter.sendMail(adminMailOptions);
+    console.log(`📧 Email sent to admin`);
 
-    res.status(201).json({ message: 'Form submitted and email sent.' });
+    // Customer confirmation email
+    const customerMailOptions = {
+      from: `"AGX International" <${process.env.EMAIL_USER}>`,
+      to: clean(email),
+      subject: 'Thank You for Contacting AGX International',
+      html: `
+        <h2>Thank You for Reaching Out</h2>
+        <p>Dear ${clean(name)},</p>
+
+        <p>Thank you for submitting your <strong>${clean(buySell)}</strong> request with AGX International. We’ve received your form and our team is currently reviewing the details.</p>
+
+        <h3>What Happens Next?</h3>
+        <p>One of our representatives will reach out to you shortly (usually within 1–2 business days) based on the timing and industry you selected.</p>
+
+        <h3>Summary of Your Submission:</h3>
+        <ul>
+          <li><strong>Name:</strong> ${clean(name)}</li>
+          <li><strong>Phone:</strong> ${clean(phone)}</li>
+          <li><strong>Email:</strong> ${clean(email)}</li>
+          <li><strong>Country:</strong> ${clean(country)}</li>
+          <li><strong>Drop-off Location:</strong> ${clean(dropOffLocation)}</li>
+          <li><strong>Industries:</strong> ${cleanIndustries.join(', ')}</li>
+          <li><strong>Timing:</strong> ${clean(timing)}</li>
+        </ul>
+
+        <p>If you have any questions, feel free to contact us at <a href="mailto:info@agx-international.com">info@agx-international.com</a>.</p>
+
+        <p>Best regards,<br><strong>AGX International Team</strong></p>
+      `,
+      headers: {
+        'X-Priority': '3',
+        'X-Mailer': 'NodeMailer',
+      },
+    };
+
+    await transporter.sendMail(customerMailOptions);
+    console.log(`📧 Confirmation email sent to customer: ${email}`);
+
+    res.status(201).json({ message: 'Form submitted, emails sent.' });
   } catch (error) {
     console.error('❌ Buy/Sell form error:', error.stack || error);
     res.status(500).json({ message: 'Server error. Try again later.' });

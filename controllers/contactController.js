@@ -17,10 +17,11 @@ export const submitContactForm = async (req, res) => {
     }
 
     // Sanitize user inputs
-    const cleanName = sanitizeHtml(name.trim());
-    const cleanEmail = sanitizeHtml(email.trim());
-    const cleanPhone = sanitizeHtml(phone.trim());
-    const cleanMessage = sanitizeHtml(message.trim());
+    const clean = (str) => sanitizeHtml(str.trim());
+    const cleanName = clean(name);
+    const cleanEmail = clean(email);
+    const cleanPhone = clean(phone);
+    const cleanMessage = clean(message);
 
     // Save to DB
     const newContact = new Contact({
@@ -42,10 +43,14 @@ export const submitContactForm = async (req, res) => {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      tls: { rejectUnauthorized: false },
     });
 
-    // Compose email
-    const mailOptions = {
+    await transporter.verify();
+    console.log("📬 SMTP server ready.");
+
+    // Email to admin
+    const adminMailOptions = {
       from: `"Website Contact" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_SEND || process.env.EMAIL_USER,
       subject: "📬 New Contact Submission",
@@ -59,8 +64,40 @@ export const submitContactForm = async (req, res) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent to ${mailOptions.to} | ID: ${info.messageId}`);
+    await transporter.sendMail(adminMailOptions);
+    console.log(`✅ Admin email sent: ${adminMailOptions.to}`);
+
+    // Confirmation email to customer
+    const customerMailOptions = {
+      from: `"AGX International" <${process.env.EMAIL_USER}>`,
+      to: cleanEmail,
+      subject: "Thank You for Contacting AGX International",
+      html: `
+        <h2>Thank You for Your Message</h2>
+        <p>Dear ${cleanName},</p>
+
+        <p>Thank you for getting in touch with us through our website. We have received your message and one of our team members will contact you shortly.</p>
+
+        <h3>Your Message Summary:</h3>
+        <ul>
+          <li><strong>Name:</strong> ${cleanName}</li>
+          <li><strong>Email:</strong> ${cleanEmail}</li>
+          <li><strong>Phone:</strong> ${cleanPhone}</li>
+        </ul>
+        <p><strong>Message:</strong><br>${cleanMessage}</p>
+
+        <p>
+  If your inquiry is urgent, feel free to call or email us directly at
+  <a href="mailto:info@agx-international.com">info@agx-international.com</a>.
+</p>
+
+
+        <p>Best regards,<br><strong>AGX International Team</strong></p>
+      `,
+    };
+
+    await transporter.sendMail(customerMailOptions);
+    console.log(`📧 Confirmation email sent to customer: ${cleanEmail}`);
 
     res.status(201).json({ message: "Your message has been sent successfully!" });
   } catch (err) {
