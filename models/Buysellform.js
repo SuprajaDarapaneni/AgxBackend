@@ -34,6 +34,10 @@ const BuySellFormSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  expectedDate: {    // <-- Add this field
+    type: Date,
+    required: true,
+  },
   message: {
     type: String,
     required: false,  // Optional message

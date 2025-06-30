@@ -1,44 +1,78 @@
+import sanitizeHtml from 'sanitize-html';
 import BuySellForm from '../models/Buysellform.js';
 import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-import sanitizeHtml from 'sanitize-html';
 
-dotenv.config();
+// Debug environment variables for SMTP config
 
+
+// Setup nodemailer transporter using env variables
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
-  port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-  secure: false,
+  port: Number(process.env.EMAIL_PORT),
+  secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for others
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  tls: { rejectUnauthorized: false, minVersion: 'TLSv1.2' },
-  logger: false,
-  debug: false,
 });
 
+console.log('--- SMTP Config Debug ---');
+console.log('SMTP_HOST:', process.env.EMAIL_HOST);
+console.log('SMTP_PORT:', process.env.EMAIL_PORT);
+console.log('EMAIL_USER:', process.env.EMAIL_USER ? '[set]' : '[not set]');
+console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '[set]' : '[not set]');
+console.log('EMAIL_SEND:', process.env.EMAIL_SEND || 'default admin email');
+console.log('-------------------------');
 export const buysell = async (req, res) => {
   try {
     const {
-      buySell, name, phone, email, dropOffLocation,
-      country, industries, timing, message = '', imageUrls = []
+      buySell,
+      name,
+      phone,
+      email,
+      dropOffLocation,
+      country,
+      industries,
+      timing,
+      expectedDate,
+      message = '',
+      imageUrls = [],
     } = req.body;
 
     // Validate required fields
-    if (!buySell || !name || !phone || !email || !dropOffLocation || !country || !timing) {
+    if (
+      !buySell ||
+      !name ||
+      !phone ||
+      !email ||
+      !dropOffLocation ||
+      !country ||
+      !timing ||
+      !expectedDate
+    ) {
+      console.warn('⚠️ Missing required fields');
       return res.status(400).json({ message: 'All required fields must be filled.' });
     }
+
     if (!Array.isArray(industries) || industries.length === 0) {
+      console.warn('⚠️ No industries selected');
       return res.status(400).json({ message: 'Select at least one industry.' });
     }
 
-    // Sanitize inputs
-    const clean = (str) => sanitizeHtml(str.trim());
+    // Sanitize helper
+    const clean = (str) => (typeof str === 'string' ? sanitizeHtml(str.trim()) : '');
+
     const cleanIndustries = industries.map(clean);
     const cleanImages = Array.isArray(imageUrls) ? imageUrls.map(clean) : [];
 
-    // Save to DB
+    // Validate expected date
+    const parsedDate = new Date(expectedDate);
+    if (isNaN(parsedDate.getTime())) {
+      console.warn('⚠️ Invalid expected date:', expectedDate);
+      return res.status(400).json({ message: 'Invalid expected date.' });
+    }
+
+    // Save form
     const newForm = new BuySellForm({
       buySell: clean(buySell),
       name: clean(name),
@@ -48,18 +82,28 @@ export const buysell = async (req, res) => {
       country: clean(country),
       industries: cleanIndustries,
       timing: clean(timing),
+      expectedDate: parsedDate,
       message: clean(message),
       imageUrls: cleanImages,
     });
 
     await newForm.save();
-    console.log('✅ Buy/Sell form saved');
+    console.log('✅ Buy/Sell form saved to DB');
+console.log('SMTP host:', process.env.EMAIL_HOST);
+console.log('SMTP port:', process.env.EMAIL_PORT);
+console.log('Email user:', process.env.EMAIL_USER);
 
-    // Admin email (with image HTML if available)
+    // Prepare images HTML
     const imagesHtml = cleanImages.length
-      ? cleanImages.map(url => `<img src="${url}" alt="Image" style="max-width:300px;margin-bottom:10px;display:block;">`).join('')
+      ? cleanImages
+          .map(
+            (url) =>
+              `<img src="${url}" alt="Image" style="max-width:300px;margin-bottom:10px;display:block;">`
+          )
+          .join('')
       : '';
 
+    // Admin email options
     const adminMailOptions = {
       from: `"AGX Buy/Sell" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_SEND || 'info@agx-international.com',
@@ -73,7 +117,8 @@ export const buysell = async (req, res) => {
         <p><strong>DropOff Location:</strong> ${clean(dropOffLocation)}</p>
         <p><strong>Country:</strong> ${clean(country)}</p>
         <p><strong>Industries:</strong> ${cleanIndustries.join(', ')}</p>
-        <p><strong>Timing:</strong> ${clean(timing)}</p>
+        
+        <p><strong>Expected Date:</strong> ${parsedDate.toDateString()}</p>
         <p><strong>Message:</strong><br>${clean(message)}</p>
         ${imagesHtml ? `<h3>Images:</h3>${imagesHtml}` : ''}
       `,
@@ -83,10 +128,11 @@ export const buysell = async (req, res) => {
       },
     };
 
+    console.log('📧 Sending admin email to:', adminMailOptions.to);
     await transporter.sendMail(adminMailOptions);
-    console.log(`📧 Email sent to admin`);
+    console.log('📧 Admin email sent');
 
-    // Customer confirmation email
+    // Customer email options
     const customerMailOptions = {
       from: `"AGX International" <${process.env.EMAIL_USER}>`,
       to: clean(email),
@@ -108,7 +154,8 @@ export const buysell = async (req, res) => {
           <li><strong>Country:</strong> ${clean(country)}</li>
           <li><strong>Drop-off Location:</strong> ${clean(dropOffLocation)}</li>
           <li><strong>Industries:</strong> ${cleanIndustries.join(', ')}</li>
-          <li><strong>Timing:</strong> ${clean(timing)}</li>
+          
+          <li><strong>Expected Date:</strong> ${parsedDate.toDateString()}</li>
         </ul>
 
         <p>If you have any questions, feel free to contact us at <a href="mailto:info@agx-international.com">info@agx-international.com</a>.</p>
@@ -121,9 +168,10 @@ export const buysell = async (req, res) => {
       },
     };
 
+    console.log('📧 Sending confirmation email to customer:', clean(email));
     await transporter.sendMail(customerMailOptions);
-    console.log(`📧 Confirmation email sent to customer: ${email}`);
-
+    console.log('📧 Customer confirmation email sent');
+//<li><strong>Timing:</strong> ${clean(timing)}</li>
     res.status(201).json({ message: 'Form submitted, emails sent.' });
   } catch (error) {
     console.error('❌ Buy/Sell form error:', error.stack || error);
