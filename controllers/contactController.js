@@ -62,6 +62,12 @@ export const submitContactForm = async (req, res) => {
         <p><strong>Message:</strong></p>
         <p>${cleanMessage}</p>
       `,
+      priority: "high",
+      headers: {
+        "X-Priority": "1",
+        "X-MSMail-Priority": "High",
+        Importance: "high",
+      },
     };
 
     await transporter.sendMail(adminMailOptions);
@@ -87,13 +93,18 @@ export const submitContactForm = async (req, res) => {
         <p><strong>Message:</strong><br>${cleanMessage}</p>
 
         <p>
-  If your inquiry is urgent, feel free to call or email us directly at
-  <a href="mailto:info@agx-international.com">info@agx-international.com</a>.
-</p>
-
+          If your inquiry is urgent, feel free to call or email us directly at
+          <a href="mailto:info@agx-international.com">info@agx-international.com</a>.
+        </p>
 
         <p>Best regards,<br><strong>AGX International Team</strong></p>
       `,
+      priority: "high",
+      headers: {
+        "X-Priority": "1",
+        "X-MSMail-Priority": "High",
+        Importance: "high",
+      },
     };
 
     await transporter.sendMail(customerMailOptions);
