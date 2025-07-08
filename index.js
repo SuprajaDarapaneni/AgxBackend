@@ -55,6 +55,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://www.agx-international.com",
   "https://agx-frontend.vercel.app",
+  "https://agx-git-prod-suprajas-projects-db03ac3e.vercel.app",
   "https://agx-git-prod-suprajas-projects-db03ac3e.vercel.app"
 ];
 
