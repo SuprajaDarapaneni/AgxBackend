@@ -111,9 +111,6 @@
 //   console.error("❌ MongoDB connection failed:", error);
 // });
 
-
-
-
 import express from "express";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
@@ -132,17 +129,14 @@ import blogRoutes from "./routes/blogRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import reviewFormRoutes from "./routes/reviewFormRoutes.js";
 
-// Data Models (used if seeding is enabled)
+// Optional sample data
 import User from "./models/User.js";
 import Product from "./models/Product.js";
 import ProductStat from "./models/ProductStat.js";
 import Transaction from "./models/Transaction.js";
 import OverallStat from "./models/OverallStat.js";
 import AffiliateStat from "./models/AffiliateStat.js";
-import Productcard from "./models/Productcard.js";
-import Contact from "./models/ContactUs.js";
 
-// Optional sample data
 import {
   dataUser,
   dataProduct,
@@ -152,23 +146,21 @@ import {
   dataAffiliateStat,
 } from "./data/index.js";
 
-// Load environment variables
+// Load env variables
 dotenv.config();
 
-/* Express App Initialization */
+// Initialize app
 const app = express();
 
-/* Security and Logging Middleware */
+// Middleware
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(morgan("common"));
-
-/* Body Parsing Middleware */
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json());
 
-/* CORS Configuration */
+// CORS
 const allowedOrigins = [
   "http://localhost:5173",
   "https://www.agx-international.com",
@@ -189,22 +181,26 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // Preflight handling
+app.options("*", cors(corsOptions)); // Handle preflight
 
-/* Static File Serving (Fix path!) */
-app.use("/uploads", express.static("uploads")); // Make sure `/uploads` folder exists
+// Static uploads
+app.use("/uploads", express.static("uploads")); // Make sure "uploads/" exists
 
-/* ROUTES */
-app.use("/client", clientRoutes);
-app.use("/general", generalRoutes);
-app.use("/management", managementRoutes);
-app.use("/auth", authRoutes);
-app.use("/blogs", blogRoutes);
-app.use("/reviews", reviewRoutes);
-app.use("/review-form", reviewFormRoutes);
-app.use("/", contactRoutes); // Keep catch-all routes last
+// ROUTES
+try {
+  app.use("/client", clientRoutes);
+  app.use("/general", generalRoutes);
+  app.use("/management", managementRoutes);
+  app.use("/auth", authRoutes);
+  app.use("/blogs", blogRoutes);
+  app.use("/reviews", reviewRoutes);
+  app.use("/review-form", reviewFormRoutes);
+  app.use("/", contactRoutes); // Catch-all last
+} catch (error) {
+  console.error("❌ Error mounting routes:", error.message);
+}
 
-/* MongoDB Connection & Server Start */
+// Mongoose + Start server
 const PORT = process.env.PORT || 9000;
 const MONGO_URL = process.env.MONGO_URL || "mongodb://localhost:27017/ecomm";
 
@@ -217,15 +213,14 @@ mongoose.connect(MONGO_URL, {
     console.log(`✅ Server running on port: ${PORT}`);
   });
 
-  // ✅ Optional Seeding (run once, then comment)
-  // User.insertMany(dataUser);
-  // Product.insertMany(dataProduct);
-  // ProductStat.insertMany(dataProductStat);
-  // Transaction.insertMany(dataTransaction);
-  // OverallStat.insertMany(dataOverallStat);
-  // AffiliateStat.insertMany(dataAffiliateStat);
+  // Seeding (only run once!)
+  // await User.insertMany(dataUser);
+  // await Product.insertMany(dataProduct);
+  // await ProductStat.insertMany(dataProductStat);
+  // await Transaction.insertMany(dataTransaction);
+  // await OverallStat.insertMany(dataOverallStat);
+  // await AffiliateStat.insertMany(dataAffiliateStat);
 })
-.catch((error) => {
-  console.error("❌ MongoDB connection failed:", error);
+.catch((err) => {
+  console.error("❌ MongoDB connection error:", err.message);
 });
-
