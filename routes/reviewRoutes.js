@@ -13,7 +13,7 @@ const authenticateAdmin = (req, res, next) => {
 // Get all reviews
 router.get('/', async (req, res) => {
   try {
-    const reviews = await Review.find().sort({ date: -1 });
+    const reviews = await Review.find().sort({ createdAt: -1 }); // Use createdAt or updatedAt if using timestamps
     res.json(reviews);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 
 // Create a new review with validation
 router.post('/', async (req, res) => {
-  const { name, rating, comment } = req.body;
+  const { name, rating, comment, imageUrl } = req.body;
 
   if (!name || !rating || !comment) {
     return res.status(400).json({ message: 'Name, rating, and comment are required.' });
@@ -40,8 +40,17 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ message: 'Comment must be a non-empty string.' });
   }
 
+  if (imageUrl && typeof imageUrl !== 'string') {
+    return res.status(400).json({ message: 'Image URL must be a string.' });
+  }
+
   try {
-    const newReview = new Review({ name: name.trim(), rating, comment: comment.trim() });
+    const newReview = new Review({
+      name: name.trim(),
+      rating,
+      comment: comment.trim(),
+      imageUrl: imageUrl || null,
+    });
     const savedReview = await newReview.save();
     res.status(201).json(savedReview);
   } catch (error) {
@@ -52,14 +61,12 @@ router.post('/', async (req, res) => {
 // Update a review by ID - protected by admin auth middleware
 router.put('/:id', authenticateAdmin, async (req, res) => {
   const id = req.params.id;
-  const { name, rating, comment } = req.body;
+  const { name, rating, comment, imageUrl } = req.body;
 
-  // Validate MongoDB ObjectId format
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: 'Invalid review ID.' });
   }
 
-  // Validate fields (optional - you can customize this)
   if (!name || !rating || !comment) {
     return res.status(400).json({ message: 'Name, rating, and comment are required.' });
   }
@@ -76,16 +83,20 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
     return res.status(400).json({ message: 'Comment must be a non-empty string.' });
   }
 
+  if (imageUrl && typeof imageUrl !== 'string') {
+    return res.status(400).json({ message: 'Image URL must be a string.' });
+  }
+
   try {
     const review = await Review.findById(id);
     if (!review) {
       return res.status(404).json({ message: 'Review not found.' });
     }
 
-    // Update fields
     review.name = name.trim();
     review.rating = rating;
     review.comment = comment.trim();
+    review.imageUrl = imageUrl || null;
 
     const updatedReview = await review.save();
     res.json(updatedReview);
@@ -99,7 +110,6 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
 router.delete('/:id', authenticateAdmin, async (req, res) => {
   const id = req.params.id;
 
-  // Validate MongoDB ObjectId format before querying
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: 'Invalid review ID.' });
   }
