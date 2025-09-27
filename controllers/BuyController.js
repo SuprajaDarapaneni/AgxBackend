@@ -7,18 +7,18 @@ import nodemailer from 'nodemailer';
 
 // Setup nodemailer transporter using env variables
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT),
-  secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for others
+  host: process.env.EMAIL_HOST,               // e.g., smtp.gmail.com
+  port: Number(process.env.EMAIL_PORT),       // e.g., 587
+  secure: Number(process.env.EMAIL_PORT) === 465, // true for 465 SSL, false for 587 STARTTLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  //  auth: {
-  // user: 'yaswanthkumarch2001@gmail.com',
-  //   pass: 'wxsy qntv rwny zjgp',
-  // },
+  tls: {
+    rejectUnauthorized: false,  // helps avoid some certificate issues, optional
+  },
 });
+
 
 console.log('--- SMTP Config Debug ---');
 console.log('SMTP_HOST:', process.env.EMAIL_HOST);
