@@ -92,7 +92,7 @@ export const buysell = async (req, res) => {
 
     console.log('📧 Sending admin email to:', adminEmail);
     await resend.emails.send({
-      from: 'AGX International <onboarding@resend.dev>',
+      from: 'AGX International <info@agx-international.com>',
       to: adminEmail,
       subject: '📄 New Buy/Sell Form Submission',
       html: adminEmailHtml,
@@ -127,7 +127,7 @@ export const buysell = async (req, res) => {
 
     console.log('📧 Sending confirmation email to customer:', clean(email));
     await resend.emails.send({
-      from: 'AGX International <onboarding@resend.dev>',
+      from: 'AGX International <info@agx-international.com>',
       to: clean(email),
       subject: 'Thank You for Contacting AGX International',
       html: customerHtml,
